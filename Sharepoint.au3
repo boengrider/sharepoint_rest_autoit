@@ -100,3 +100,34 @@ Func SPGetSecurityToken(ByRef $_oHTTP, $_sTenantDomainName, $_sTenantID, $_sReso
 		Return $_oHTTP.status ; HTTP error. Token not found
 	EndIf
 EndFunc
+
+#comments-start
+SPGetXDigestValue(ByRef $object, $string)
+#comments-end
+Func SPGetXDigestValue(ByRef $_oHTTP, $_sSiteUrl, $_sSecurityToken)
+	Local $_aRxMatch
+	Local $_sDigest
+	If StringRight($_sSiteUrl,1) == "/" Then
+		$_sSiteUrl = $_sSiteUrl & "_api/contextinfo"
+	Else
+		$_sSiteUrl = $_sSiteUrl & "/_api/contextinfo"
+	EndIf
+
+	With $_oHTTP
+		.open("POST", $_sSiteUrl, False)
+		.setRequestHeader("accept", "application/json;odata=verbose")
+		.setRequestHeader("authorization", "Bearer " & $_sSecurityToken)
+		.send()
+	EndWith
+
+	If $_oHTTP.status == 200 Then
+		$_aRxMatch = StringRegExp($_oHTTP.responseText,"FormDigestValue"":""0x[a-fA-F0-9]+,",$STR_REGEXPARRAYMATCH)
+		If UBound($_aRxMatch) > 0 Then
+			$_sDigest = StringRight($_aRxMatch[0], StringLen($_aRxMatch[0]) - 18)
+			$_sDigest = StringLeft($_sDigest, StringLen($_sDigest) - 1)
+			Return $_sDigest
+		EndIf
+	EndIf
+
+	Return 1 ; Couldn't find x digest value
+EndFunc
